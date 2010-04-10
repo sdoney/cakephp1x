@@ -5931,7 +5931,7 @@ class FormHelperTest extends CakeTestCase {
 		/*
 		 * #4 This test has two parents and four children. By default (as of r7117) both
 		 * parents are show but the first parent is missing a child. This is the inconsistency
-		 * in the default behaviour - one parent has all children, the other does not - dependent
+		 * in the default behavior - one parent has all children, the other does not - dependent
 		 * on the data values.
 		 */
 		$result = $this->Form->select('Model.field', array(

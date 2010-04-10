@@ -2,7 +2,7 @@
 /**
  * This is core configuration file.
  *
- * Use it to configure core behaviour ofCake.
+ * Use it to configure core behavior of Cake.
  *
  * PHP versions 4 and 5
  *
