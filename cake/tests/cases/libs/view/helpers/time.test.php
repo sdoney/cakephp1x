@@ -234,6 +234,9 @@ class TimeHelperTest extends CakeTestCase {
 		$result = $this->Time->timeAgoInWords('2007-9-25', 'Y-m-d', true);
 		$this->assertEqual($result, 'on 2007-09-25');
 
+		$result = $this->Time->timeAgoInWords('2007-9-25', array('format' => 'Y-m-d', 'relativeString' => 'by %s'));
+		$this->assertEqual($result, 'by 2007-09-25');
+
 		$result = $this->Time->timeAgoInWords(strtotime('-2 weeks -2 days'), 'Y-m-d', false);
 		$this->assertEqual($result, '2 weeks, 2 days ago');
 

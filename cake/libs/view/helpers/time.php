@@ -443,6 +443,7 @@ class TimeHelper extends AppHelper {
  *
  * - `format` => a fall back format if the relative time is longer than the duration specified by end
  * - `end` => The end of relative time telling
+ * - `relativeString` => The printf compatible string when outputting relative time
  * - `userOffset` => Users offset from GMT (in hours)
  *
  * Relative dates look something like this:
@@ -474,6 +475,7 @@ class TimeHelper extends AppHelper {
 
 		$format = 'j/n/y';
 		$end = '+1 month';
+		$relativeString = __('on %s', true);
 
 		if (is_array($options)) {
 			if (isset($options['format'])) {
@@ -483,6 +485,10 @@ class TimeHelper extends AppHelper {
 			if (isset($options['end'])) {
 				$end = $options['end'];
 				unset($options['end']);
+			}
+			if (isset($options['relativeString'])) {
+				$relativeString = $options['relativeString'];
+				unset($options['relativeString']);
 			}
 		} else {
 			$format = $options;
@@ -576,7 +582,7 @@ class TimeHelper extends AppHelper {
 		$diff = $futureTime - $pastTime;
 
 		if ($diff > abs($now - $this->fromString($end))) {
-			$relativeDate = sprintf(__('on %s',true), date($format, $inSeconds));
+			$relativeDate = sprintf($relativeString, date($format, $inSeconds));
 		} else {
 			if ($years > 0) {
 				// years and months and days
