@@ -17,7 +17,7 @@
  * @since         CakePHP(tm) v 1.2.0.4206
  * @license       http://www.opensource.org/licenses/opengroup.php The Open Group Test Suite License
  */
-App::import('Core', array('Router', 'Debugger'));
+App::import('Core', array('Router'));
 
 if (!defined('FULL_BASE_URL')) {
 	define('FULL_BASE_URL', 'http://cakephp.org');
@@ -741,29 +741,8 @@ class RouterTest extends CakeTestCase {
 			'lang' => 'en',
 			'controller' => 'shows', 'action' => 'index', 'page' => '1',
 		));
-		$expected = '/en/shows/page:1';
+		$expected = '/en/shows/shows/page:1';
 		$this->assertEqual($result, $expected);
-	}
-
-/**
- * test that plugin short cut routes behave properly. Parse and reverse route correctly.
- *
- * @return void
- */
-	function testPluginShortcutRoutes() {
-		$result = Router::url(array('plugin' => 'test_plugin', 'controller' => 'test_plugin', 'action' => 'index'));
-		$this->assertEqual($result, '/test_plugin', 'Plugin shortcut index action failed.');
-	
-		$result = Router::url(array('plugin' => 'test_plugin', 'controller' => 'test_plugin', 'action' => 'view', 1));
-		$this->assertEqual($result, '/test_plugin/view/1', 'Plugin shortcut with passed args failed.');
-
-		$result = Router::url(array(
-			'plugin' => 'test_plugin', 'controller' => 'test_plugin', 'action' => 'view',
-			1, 'sort' => 'title', 'dir' => 'asc'
-		));
-		$this->assertEqual(
-			$result, '/test_plugin/view/1/sort:title/dir:asc', 'Plugin shortcut with passed + named args failed.'
-		);
 	}
 
 /**
@@ -1168,6 +1147,12 @@ class RouterTest extends CakeTestCase {
 			'admin' => true, 'prefix' => 'admin'
 		));
 		$expected = '/admin/test_plugin/show_tickets/edit/6';
+		$this->assertEqual($result, $expected);
+
+		$result = Router::url(array(
+			'plugin' => 'test_plugin', 'controller' => 'show_tickets', 'action' => 'index', 'admin' => true
+		));
+		$expected = '/admin/test_plugin/show_tickets';
 		$this->assertEqual($result, $expected);
 
 		App::build(array('plugins' => $paths));
@@ -1756,12 +1741,38 @@ class RouterTest extends CakeTestCase {
 
 		Router::setRequestInfo(array(
 			array('controller' => 'users', 'action' => 'login', 'company' => true, 'form' => array(), 'url' => array(), 'plugin' => null),
-			array('base' => '/', 'here' => '/', 'webroot' => '/base/', 'passedArgs' => array(), 'argSeparator' => ':', 'namedArgs' => array())
+			array('base' => '/', 'here' => '/', 'webroot' => '/base/')
 		));
 
 		$result = Router::url(array('controller' => 'users', 'action' => 'login', 'company' => false));
 		$expected = '/login';
 		$this->assertEqual($result, $expected);
+	}
+
+/**
+ * test url generation with prefixes and custom routes
+ *
+ * @return void
+ */
+	function testUrlWritingWithPrefixesAndCustomRoutes() {
+		Router::connect(
+			'/admin/login', 
+			array('controller' => 'users', 'action' => 'login', 'prefix' => 'admin', 'admin' => true)
+		);
+		Router::setRequestInfo(array(
+			array('controller' => 'posts', 'action' => 'index', 'admin' => true, 'prefix' => 'admin',
+				'form' => array(), 'url' => array(), 'plugin' => null
+			),
+			array('base' => '/', 'here' => '/', 'webroot' => '/')
+		));
+		$result = Router::url(array('controller' => 'users', 'action' => 'login', 'admin' => true));
+		$this->assertEqual($result, '/admin/login');
+
+		$result = Router::url(array('controller' => 'users', 'action' => 'login'));
+		$this->assertEqual($result, '/admin/login');
+
+		$result = Router::url(array('controller' => 'users', 'action' => 'admin_login'));
+		$this->assertEqual($result, '/admin/login');
 	}
 
 /**
@@ -1964,6 +1975,7 @@ class RouterTest extends CakeTestCase {
 			)
 		), true);
 		App::objects('plugin', null, false);
+		Router::reload();
 
 		$plugins = App::objects('plugin');
 		$plugin = Inflector::underscore($plugins[0]);
@@ -1976,6 +1988,17 @@ class RouterTest extends CakeTestCase {
 			'named' => array(), 'pass' => array()
 		);
 		$this->assertEqual($result, $expected);
+
+		$result = Router::url(array('plugin' => 'test_plugin', 'controller' => 'test_plugin', 'action' => 'index'));
+		$this->assertEqual($result, '/test_plugin');
+
+		$result = Router::parse('/test_plugin');
+		$expected = array(
+			'plugin' => 'test_plugin', 'controller' => 'test_plugin', 'action' => 'index',
+			'named' => array(), 'pass' => array()
+		);
+
+		$this->assertEqual($result, $expected, 'Plugin shortcut route broken. %s');
 	}
 
 /**
@@ -2126,6 +2149,21 @@ class CakeRouteTestCase extends CakeTestCase {
 		$this->assertPattern($result, '/test_plugin/posts/index');
 		$this->assertPattern($result, '/test_plugin/posts/edit/5');
 		$this->assertPattern($result, '/test_plugin/posts/edit/5/name:value/nick:name');
+	}
+
+/**
+ * test that route parameters that overlap don't cause errors.
+ *
+ * @return void
+ */
+	function testRouteParameterOverlap() {
+		$route =& new CakeRoute('/invoices/add/:idd/:id', array('controller' => 'invoices', 'action' => 'add'));
+		$result = $route->compile();
+		$this->assertPattern($result, '/invoices/add/1/3');
+
+		$route =& new CakeRoute('/invoices/add/:id/:idd', array('controller' => 'invoices', 'action' => 'add'));
+		$result = $route->compile();
+		$this->assertPattern($result, '/invoices/add/1/3');
 	}
 
 /**
@@ -2434,6 +2472,66 @@ class CakeRouteTestCase extends CakeTestCase {
 		$result = $route->parse('/admin/posts');
 		$this->assertEqual($result['controller'], 'posts');
 		$this->assertEqual($result['action'], 'index');
+	}
+}
+
+/**
+ * test case for PluginShortRoute
+ *
+ * @package cake.tests.libs
+ */
+class PluginShortRouteTestCase extends  CakeTestCase {
+/**
+ * startTest method
+ *
+ * @access public
+ * @return void
+ */
+	function startTest() {
+		$this->_routing = Configure::read('Routing');
+		Configure::write('Routing', array('admin' => null, 'prefixes' => array()));
+		Router::reload();
+	}
+
+/**
+ * end the test and reset the environment
+ *
+ * @return void
+ **/
+	function endTest() {
+		Configure::write('Routing', $this->_routing);
+	}
+
+/**
+ * test the parsing of routes.
+ *
+ * @return void
+ */
+	function testParsing() {
+		$route =& new PluginShortRoute('/:plugin', array('action' => 'index'), array('plugin' => 'foo|bar'));
+
+		$result = $route->parse('/foo');
+		$this->assertEqual($result['plugin'], 'foo');
+		$this->assertEqual($result['controller'], 'foo');
+		$this->assertEqual($result['action'], 'index');
+
+		$result = $route->parse('/wrong');
+		$this->assertFalse($result, 'Wrong plugin name matched %s');
+	}
+
+/**
+ * test the reverse routing of the plugin shortcut urls.
+ *
+ * @return void
+ */
+	function testMatch() {
+		$route =& new PluginShortRoute('/:plugin', array('action' => 'index'), array('plugin' => 'foo|bar'));
+
+		$result = $route->match(array('plugin' => 'foo', 'controller' => 'posts', 'action' => 'index'));
+		$this->assertFalse($result, 'plugin controller mismatch was converted. %s');
+
+		$result = $route->match(array('plugin' => 'foo', 'controller' => 'foo', 'action' => 'index'));
+		$this->assertEqual($result, '/foo');
 	}
 }
 
