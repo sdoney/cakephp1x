@@ -38,9 +38,9 @@ if (!class_exists('File')) {
 		App::import('Vendor', 'csspp' . DS . 'csspp');
 		$data = file_get_contents($path);
 		$csspp = new csspp();
-		$output = $csspp->compress($data);
-		$ratio = 100 - (round(strlen($output) / strlen($data), 3) * 100);
-		$output = " /* file: $name, ratio: $ratio% */ " . $output;
+		$output = $csspp->parse($path);
+		$ratio = 100 - (round(strlen($output->data) / strlen($data), 3) * 100);
+		$output = " /* file: $name, ratio: $ratio% */ " . $output->data;
 		return $output;
 	}
 /**
